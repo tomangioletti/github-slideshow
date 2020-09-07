@@ -1,4 +1,249 @@
+<!DOCTYPE html>
+<!--
+Copyright 2020 T. Angioletti
+
+Permission is hereby granted, free of charge, to any person 
+obtaining a copy of this software and associated documentation 
+files (the "Software"), to deal in the Software without 
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom 
+the Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall 
+be included in all copies or substantial portions of the 
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR 
+OTHER DEALINGS IN THE SOFTWARE.
+-->
+<!--
+This is a simple project to learn some aspects of HTML, CSS,
+Javascript, SVG, and Git.
+v0.0.0 Initial commit.
+v0.1.0 Major changes.  
+-Added CSS.
+-Removed canvas implementation in order to concentrate on SVG.
+v0.2.0 
+-Use grid layout.
+-Register eventlistener better.
+-Clean random number code.
+
+-->
 <html>
-  <head><head>
-    <body>Hi world!</body>
+  <head>
+    <title>Conway's Game of Life</title>
+    <style>
+      .golcell {
+        stroke: gray;
+        stroke-width: 0.1px;
+        width: 4px;
+        height: 4px;
+      }
+      .live {
+        fill: rgb(200, 25, 75);
+      }
+      .live:hover {
+        fill: rgb(200, 55, 75);
+      }
+      .dead {
+        fill: rgb(70, 50, 150);
+      }
+      .dead:hover {
+        fill: rgb(70, 75, 150);
+      }
+    </style>
+  </head>
+  <body id="bod">
+    <div>
+      <button id="togglerunbutton" onclick="togglegame();">Run</button>
+      <button id="stepgamebutton" onclick="stepgame();">Step</button>
+      <button id="stepgamebutton" onclick="cleargame();">Clear</button>
+      <button id="initgamebutton" onclick="initgame();">Init</button>
+      <span id="stepnum">Step Number: 0</span>
+      <hr />
+      <svg id="s" viewBox="0 0 100 300">
+        <!-- <rect fill="pink" x="0" y="0" width="1" height="1" /> -->
+      </svg>
+    </div>
+    <!-- 
+    <hr />
+    <div id="debug">
+      DEBUG AREA
+    </div> -->
+
+    <script>
+      "use strict";
+      // @ts-check
+
+      function gi(id) {
+        return document.getElementById(id);
+      }
+      function log(t) {
+        // document.getElementById("debug").innerHTML += "<br/>" + t;
+      }
+
+      //Return a random integer.  Optional arguments min(default 0) and max(default1).
+      function ri() {
+        let a = 0;
+        let b = 1;
+        switch (arguments.length) {
+          case 2:
+            a = arguments[0];
+            b = arguments[1];
+            break;
+          case 1:
+            a = 0;
+            b = arguments[0];
+            break;
+        }
+        return a + Math.floor(Math.random() * Math.floor(b + 1 - a));
+      }
+
+      function cointoss() {
+        let x = ri(0, 5);
+        //console.log("coin:" + (x == 1));
+        return x == 1;
+      }
+
+      var running = false;
+      var stepnumber = 0;
+      const gbmaxx = 15;
+      const gbmaxy = 15;
+      function initgameboard() {
+        let gb = [];
+        for (let x = 0; x <= gbmaxx; x++) {
+          let col = [];
+          for (let y = 0; y <= gbmaxy; y++) {
+            col[y] = cointoss();
+          }
+          gb[x] = col;
+        }
+        return gb;
+      }
+      let gameboard = initgameboard();
+
+      function initgame() {
+        gameboard = initgameboard();
+        stepnumber = 0;
+        updatesvgboard();
+      }
+
+      function isalive(gb, x, y) {
+        if (x < 0) return false;
+        if (y < 0) return false;
+        if (x > gbmaxx) return false;
+        if (y > gbmaxy) return false;
+        return gb[x][y];
+      }
+      function neighbors(gb, x, y) {
+        let n = 0;
+        n += isalive(gb, x - 1, y - 1);
+        n += isalive(gb, x - 1, y);
+        n += isalive(gb, x - 1, y + 1);
+        n += isalive(gb, x, y - 1);
+        n += isalive(gb, x, y + 1);
+        n += isalive(gb, x + 1, y - 1);
+        n += isalive(gb, x + 1, y);
+        n += isalive(gb, x + 1, y + 1);
+        return n;
+      }
+      function cellid(x, y) {
+        return `cell${x},${y}`;
+      }
+      function togglecell(x, y) {
+        gameboard[x][y] = !gameboard[x][y];
+        updatesvgcell(x, y);
+      }
+      function cellsvgstring(x, y) {
+        let id = cellid(x, y);
+        let s = `<rect class="golcell dead" id="${id}" onclick="togglecell(${x},${y})" x="${
+          x * 4
+        }" y="${y * 4}"/>`;
+        return s;
+      }
+      function drawsvgboard() {
+        const svgpanel = gi("s");
+        let si = "";
+        for (let x = 0; x <= gbmaxx; x++) {
+          for (let y = 0; y <= gbmaxy; y++) {
+            si += cellsvgstring(x, y);
+          }
+        }
+        svgpanel.innerHTML = si;
+      }
+      function updatesvgcell(x, y) {
+        let c = gameboard[x][y] ? "golcell live" : "golcell dead";
+        gi(cellid(x, y)).className.baseVal = c;
+      }
+      function updatesvgboard() {
+        for (let x = 0; x <= gbmaxx; x++) {
+          for (let y = 0; y <= gbmaxy; y++) {
+            updatesvgcell(x, y);
+          }
+        }
+        gi("stepnum").innerHTML = "Step Number: " + stepnumber;
+      }
+      function nextgameboard(gb) {
+        let ngb = [];
+        for (let x = 0; x <= gbmaxx; x++) {
+          let col = [];
+          for (let y = 0; y <= gbmaxy; y++) {
+            let n = neighbors(gb, x, y);
+            if (isalive(gb, x, y)) {
+              col[y] = n == 2 || n == 3;
+            } else {
+              col[y] = n == 3;
+            }
+          }
+          ngb[x] = col;
+        }
+        return ngb;
+      }
+
+      function togglegame() {
+        //log("START togglegame");
+        running = !running;
+        if (running) gi("togglerunbutton").innerHTML = "Stop";
+        else gi("togglerunbutton").innerHTML = "Run";
+        // drawgameboard();
+      }
+
+      function stepgame() {
+        gameboard = nextgameboard(gameboard);
+        stepnumber++;
+        updatesvgboard();
+      }
+
+      function cleargameboard() {
+        let gb = [];
+        for (let x = 0; x <= gbmaxx; x++) {
+          let col = [];
+          for (let y = 0; y <= gbmaxy; y++) {
+            col[y] = false;
+          }
+          gb[x] = col;
+        }
+        return gb;
+      }
+      function cleargame() {
+        gameboard = cleargameboard(gameboard);
+        updatesvgboard();
+      }
+
+      function dotimer() {
+        if (running) stepgame();
+        setTimeout(dotimer, 100);
+      }
+      drawsvgboard();
+      dotimer();
+    </script>
+  </body>
 </html>
